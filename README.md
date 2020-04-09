@@ -166,3 +166,54 @@ arr_sdg_predictions <- get_arr_sdg_target_country(mmr2015, arr_sdg, 15)
   (sum(bau_mmr_proj2 * md$Births)) / (sum(md$Births)) #162.336
 
 ```
+
+#Read-in Data
+
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(devtools)
+library(usethis)
+
+Rfiles <- list.files(file.path(paste0(getwd(),"/R/")), ".R")
+Rfiles <- Rfiles[grepl(".R", Rfiles)]
+sapply(paste0(paste0(getwd(),"/R/"), Rfiles), source)
+
+country_info <- read_excel("country list_ 26 March 2019.xlsx")
+mmr_est_unrounded <- read.csv("mmr_unrounded.csv")
+live_birth_projections <- read_excel("wpp2019_Births-TFR-GFR-Female1549.xlsx")
+regional_groupings <- read.csv("regional_groupings_20190910_la_ac.csv")
+
+
+
+#Data Cleaning
+country_info <- country_info %>%
+  select(`Code`, `ISO_Numeric_Code_CODE`, `Title`) %>%
+  rename(ISOCode = `Code`, ISONum = `ISO_Numeric_Code_CODE`)
+  
+mmr_est_unrounded <- mmr_est_unrounded %>%
+  filter(`bound` == "point", `year` >= 2010) %>%
+  select(-c(`q`, `perc`, `bound`)) %>%
+  mutate("MMR" = `value` * 100000)
+
+mmr_est_unrounded_pwider <- mmr_est_unrounded %>%
+  select(-c(`value`)) %>%
+  pivot_wider(names_from = `year`, values_from = `MMR`)
+  
+regional_groupings <- regional_groupings %>%
+  select(`ISOCode`, `Country.x`, `sdg_1`)
+
+live_birth_projections2030 <- live_birth_projections %>% 
+  filter(Year == 2030) %>%
+  select(-c(`Year`)) %>%
+  rename(name = 'Location') 
+  
+
+#Calc BAU ARR
+calc_bau_arr_tibble <- calc_bau_arr(mmr_est_unrounded_pwider, 2010, 2017)
+knitr::kable(calc_bau_arr_tibble)
+
+#new function only has bau arr and iso code columns
+cba_tibble <- cba(mmr_est_unrounded_pwider)
+knitr::kable(cba_tibble)
+
